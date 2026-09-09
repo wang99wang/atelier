@@ -1,5 +1,5 @@
 // ===== Service Worker：离线缓存 / 类原生体验 =====
-const CACHE = 'ai-workbench-v3';
+const CACHE = 'ai-workbench-v4';
 const ASSETS = [
   './', './index.html', './manifest.json',
   './css/app.css',
@@ -40,4 +40,8 @@ self.addEventListener('fetch', (e) => {
 // 后台同步（联网自动同步 outbox）
 self.addEventListener('sync', (e) => {
   if (e.tag === 'sync-outbox') { e.waitUntil(Promise.resolve()); }
+});
+// 收到「立即激活新版本」指令时跳过等待，直接生效
+self.addEventListener('message', (e) => {
+  if (e.data === 'skipWaiting') self.skipWaiting();
 });

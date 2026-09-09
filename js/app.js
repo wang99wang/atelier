@@ -199,6 +199,7 @@ function buildMenu() {
   // 回收站 / 设置 入口（不参与拖拽排序，始终置底；只读模式隐藏）
   if(!READONLY){
     menu.appendChild(el('div',{class:'menu-item',onclick:openTrash},[el('div',{class:'mi-ico',html:'🗑'}),el('div',{class:'mi-label',text:'回收站'})]));
+    menu.appendChild(el('div',{class:'menu-item',onclick:openDataManage},[el('div',{class:'mi-ico',html:'📦'}),el('div',{class:'mi-label',text:'数据管理'})]));
     menu.appendChild(el('div',{class:'menu-item',onclick:openSettings},[el('div',{class:'mi-ico',html:'⚙️'}),el('div',{class:'mi-label',text:'设置'})]));
     menu.appendChild(el('div',{class:'menu-add',onclick:openAddEntry},'➕ 添加入口 / 收藏网页'));
   }
@@ -301,6 +302,22 @@ async function openTrash(){ if(READONLY){ toast('只读分享模式，不可修�
     body.appendChild(list);
   }
   modal.open('🗑 回收站（30天）', body);
+}
+
+// ===== 数据管理（导出 / 导入）=====
+async function openDataManage(){
+  if(READONLY){ toast('只读分享模式，不可修改','err'); return; }
+  const body = el('div',{});
+  body.appendChild(el('div',{class:'muted',style:'font-size:12px;margin-bottom:12px'},'把当前设备的数据导出成 JSON 备份；换设备或清缓存后，用「导入 JSON」恢复。注意：工作台名、菜单与标题改名不随此备份迁移，需重新设置。'));
+  body.appendChild(el('div',{class:'row wrap',style:'gap:8px;margin-bottom:12px'},[
+    el('button',{class:'btn btn-soft btn-sm',onclick:exportAll},'⬇ 全量导出 JSON'),
+    el('button',{class:'btn btn-soft btn-sm',onclick:importAll},'⬆ 导入 JSON')
+  ]));
+  const info = el('div',{class:'muted',style:'font-size:12px'},'存储占用计算中…');
+  body.appendChild(info);
+  modal.open('📦 数据管理', body);
+  const s = await storageInfo(); const mb=(s.bytes/1048576).toFixed(2);
+  info.textContent = `记录 ${s.records} 条 · 文件 ${s.files} 个 · 约 ${mb}MB（IndexedDB）`;
 }
 
 // ===== AI 配置卡片（设置页与全局弹窗复用）=====

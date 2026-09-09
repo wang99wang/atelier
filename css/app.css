@@ -333,6 +333,11 @@ textarea.input{min-height:90px}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 .toast.ok{background:var(--green)}
 .toast.err{background:#E7728A}
+/* 离线状态横幅 */
+.offline-bar{position:fixed;left:0;right:0;bottom:0;z-index:315;background:#5b6b7b;color:#fff;font-size:13px;font-weight:600;text-align:center;padding:7px 12px;box-shadow:0 -4px 14px rgba(0,0,0,.18)}
+/* 新版本提示 toast 内按钮 */
+.toast.show.update{display:flex;align-items:center;gap:12px;pointer-events:auto}
+.toast-btn{background:#fff;color:var(--ink);border:none;border-radius:999px;padding:6px 14px;font-weight:700;font-size:13px;cursor:pointer}
 
 /* 提醒小卡 */
 .reminder-row{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:var(--radius-sm);background:var(--card);border:1px solid var(--line);box-shadow:var(--shadow-sm)}

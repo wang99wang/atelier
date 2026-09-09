@@ -1,0 +1,26 @@
+{
+  "name": "个人全能AI智能工作台",
+  "short_name": "AI工作台",
+  "description": "个人全能AI智能工作台 · 7大模块 · 永久云端+本地双存储",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["standalone", "fullscreen", "minimal-ui"],
+  "orientation": "any",
+  "background_color": "#FFF6F2",
+  "theme_color": "#FFC6D1",
+  "categories": ["productivity", "lifestyle", "utilities"],
+  "lang": "zh-CN",
+  "icons": [
+    { "src": "assets/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "assets/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "assets/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "assets/apple-touch-icon.png", "sizes": "180x180", "type": "image/png" }
+  ],
+  "shortcuts": [
+    { "name": "记账", "url": "./index.html#/finance/ledger" },
+    { "name": "录音转文字", "url": "./index.html#/tools/record" },
+    { "name": "心情随笔", "url": "./index.html#/daily/mood" },
+    { "name": "实时行情", "url": "./index.html#/finance/market" }
+  ]
+}

@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#FFC6D1">
+  <meta name="background-color" content="#FFF6F2">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="AI工作台">
+  <meta name="description" content="个人全能AI智能工作台 - PWA">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="assets/icon-192.png">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+  <title>个人全能AI智能工作台</title>
+  <link rel="stylesheet" href="css/app.css">
+  <link rel="preconnect" href="https://api.open-meteo.com">
+  <style>
+    /* 首屏加载占位（防白屏，渲染后由 JS 清空） */
+    .boot{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:62vh;gap:16px}
+    .boot-logo{font-size:52px;animation:bpulse 1.5s ease-in-out infinite}
+    .boot-text{font-size:14px;color:#c98aa0}
+    .boot-spinner{width:28px;height:28px;border:3px solid #ffd6e2;border-top-color:#ff8fab;border-radius:50%;animation:bspin .8s linear infinite}
+    @keyframes bpulse{0%,100%{transform:scale(1)}50%{transform:scale(1.12)}}
+    @keyframes bspin{to{transform:rotate(360deg)}}
+    /* 生成中骨架（微光动画） */
+    .skeleton-wrap{display:flex;flex-direction:column;gap:12px;margin-top:8px}
+    .skeleton-card{background:#fff;border-radius:16px;padding:14px;box-shadow:0 4px 14px rgba(255,150,180,.12)}
+    .sk-line{height:12px;border-radius:6px;background:linear-gradient(90deg,#ffe3ec 25%,#ffd0de 50%,#ffe3ec 75%);background-size:400% 100%;animation:shimmer 1.3s ease-in-out infinite;margin-bottom:8px}
+    .sk-title{height:16px;width:55%;background:linear-gradient(90deg,#ffd0de 25%,#ffc0d4 50%,#ffd0de 75%);background-size:400% 100%;animation:shimmer 1.3s ease-in-out infinite}
+    .sk-line.short{width:70%}
+    @keyframes shimmer{0%{background-position:100% 0}100%{background-position:-100% 0}}
+  </style>
+</head>
+<body>
+  <div id="app" class="app">
+    <aside id="sidebar" class="sidebar" aria-label="主导航">
+      <div class="brand">
+        <img src="assets/icon-192.png" alt="" class="brand-logo">
+        <div class="brand-text">
+          <div class="brand-title">AI工作台</div>
+          <div class="brand-sub">个人智能空间</div>
+        </div>
+        <button id="brandRename" class="brand-rename" title="重命名工作台" aria-label="重命名工作台">✎</button>
+      </div>
+      <nav id="menu" class="menu"></nav>
+      <div class="sidebar-foot">
+        <button id="installBtn" class="btn btn-primary btn-block" style="display:none">安装到主屏</button>
+        <div class="sync-status" id="syncStatus">已同步</div>
+        <div class="storage-meter" id="storageMeter"></div>
+      </div>
+    </aside>
+
+    <div id="overlay" class="overlay"></div>
+
+    <main class="main">
+      <div id="routeProgress"></div>
+      <header class="topbar">
+        <button id="menuToggle" class="icon-btn menu-toggle" aria-label="菜单">
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <div class="page-title" id="pageTitle">首页</div>
+        <div class="search-box">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input id="globalSearch" type="search" placeholder="搜索全部内容…" autocomplete="off">
+        </div>
+        <div class="topbar-actions">
+          <button id="aiBtn" class="icon-btn" title="AI 大模型设置">🤖</button>
+          <button id="weatherBadge" class="icon-btn" title="天气">🌤</button>
+          <button id="notifBadge" class="icon-btn" title="通知">🔔</button>
+          <button id="settingsBtn" class="icon-btn" title="设置">⚙️</button>
+        </div>
+      </header>
+      <div id="content" class="content">
+        <div class="boot">
+          <div class="boot-logo">🌸</div>
+          <div class="boot-text">正在加载你的智能工作台…</div>
+          <div class="boot-spinner"></div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div id="modal" class="modal" role="dialog" aria-modal="true" style="display:none">
+    <div class="modal-backdrop"></div>
+    <div class="modal-card">
+      <div class="modal-head">
+        <h3 id="modalTitle">标题</h3>
+        <button class="icon-btn modal-close" aria-label="关闭">✕</button>
+      </div>
+      <div id="modalBody" class="modal-body"></div>
+    </div>
+  </div>
+
+  <div id="drawer" class="drawer" role="dialog" aria-modal="true" style="display:none">
+    <div class="drawer-backdrop"></div>
+    <div class="drawer-card">
+      <div class="drawer-head">
+        <h3 id="drawerTitle">标题</h3>
+        <button class="icon-btn drawer-close" aria-label="关闭">✕</button>
+      </div>
+      <div id="drawerBody" class="drawer-body"></div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

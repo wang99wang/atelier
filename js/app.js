@@ -472,6 +472,54 @@ onSyncStatus((txt)=>{ const s=$('#syncStatus'); if(s) s.textContent=txt; });
 window.addEventListener('error', (e)=>{ console.error('[error]', e.error||e.message); toast('出错了：'+(e.message||'未知错误'),'err'); });
 window.addEventListener('unhandledrejection', (e)=>{ console.error('[unhandled]', e.reason); toast('操作失败：'+((e.reason&&e.reason.message)||'未知错误'),'err'); });
 
+// ===== 新版本提示（部署后用户可一键刷新到最新版）=====
+function showUpdateToast(){
+  const t = $('#toast');
+  t.innerHTML = '';
+  t.appendChild(el('span',{},'🎉 发现新版本，已就绪'));
+  t.appendChild(el('button',{class:'toast-btn',onclick:()=>{
+    const c = navigator.serviceWorker && navigator.serviceWorker.controller;
+    if (c) c.postMessage('skipWaiting'); else location.reload();
+  }},'立即刷新'));
+  t.className = 'toast show update';
+  clearTimeout(t._timer);
+  t._timer = setTimeout(()=>t.classList.remove('show'), 9000);
+}
+
+// ===== 离线状态横幅 =====
+function setOffline(on){
+  let bar = document.getElementById('offlineBar');
+  if (on && !bar){
+    bar = el('div',{id:'offlineBar',class:'offline-bar'},'📴 当前离线 · 正在使用本地缓存');
+    document.body.prepend(bar);
+  } else if (!on && bar){ bar.remove(); }
+}
+window.addEventListener('offline', ()=>setOffline(true));
+window.addEventListener('online', ()=>{ setOffline(false); toast('已恢复联网','ok'); });
+setOffline(!navigator.onLine);
+
+// ===== 坏图兜底（任何图片加载失败自动换成占位图，避免裂图）=====
+document.addEventListener('error',(e)=>{
+  const t = e.target;
+  if (t && t.tagName === 'IMG' && !t.dataset.bf){
+    t.dataset.bf = '1';
+    t.src = 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60"><rect width="60" height="60" fill="#ffe3ec"/><text x="30" y="38" font-size="28" text-anchor="middle">🖼️</text></svg>');
+  }
+}, true);
+
+// ===== 快捷键：/ 唤起全局搜索，Esc 关闭弹窗/抽屉 =====
+document.addEventListener('keydown',(e)=>{
+  if (e.key === 'Escape'){
+    if ($('#modal').style.display === 'flex') modal.close();
+    if ($('#drawer').style.display === 'flex') drawer.close();
+    return;
+  }
+  if (e.key === '/' && !/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName||'') && !document.activeElement?.isContentEditable){
+    e.preventDefault();
+    const s = $('#globalSearch'); if (s){ s.focus(); }
+  }
+});
+
 // ===== 启动 =====
 (async()=>{
   await openDB();
@@ -484,8 +532,21 @@ window.addEventListener('unhandledrejection', (e)=>{ console.error('[unhandled]'
   setInterval(refreshWeather, 600000); // 天气 10min
   renderRoute();
   toast('欢迎回来 🌸 数据已本地加载','ok');
-  // 注册 Service Worker（离线缓存 / 类原生体验）
+  // 注册 Service Worker（离线缓存 / 类原生体验 + 新版本提示）
   if ('serviceWorker' in navigator) {
-    try { await navigator.serviceWorker.register('./service-worker.js'); } catch(e){}
+    try {
+      const reg = await navigator.serviceWorker.register('./service-worker.js');
+      let refreshing = false;
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (refreshing) return; refreshing = true; location.reload();
+      });
+      reg.addEventListener('updatefound', () => {
+        const sw = reg.installing;
+        if (!sw) return;
+        sw.addEventListener('statechange', () => {
+          if (sw.state === 'installed' && navigator.serviceWorker.controller) showUpdateToast();
+        });
+      });
+    } catch(e){}
   }
 })();

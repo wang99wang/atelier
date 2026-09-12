@@ -82,6 +82,10 @@ export const APP_NAME_KEY = 'atelier_app_name';
 export const nameKey = (k)=> 'atelier_name_'+k;
 export const getNameOverride = (k, fallback)=>{ try{ const v=localStorage.getItem(nameKey(k)); return v==null?fallback:v; }catch{ return fallback; } };
 export const setNameOverride = (k, v)=>{ try{ if(v==null||String(v).trim()==='') localStorage.removeItem(nameKey(k)); else localStorage.setItem(nameKey(k), v); }catch{} };
+// ===== 图标自定义（菜单项 / 快捷方式 / 主页方块）=====
+export const iconKey = (k)=> 'atelier_icon_'+k;
+export const getIconOverride = (k, fallback)=>{ try{ const v=localStorage.getItem(iconKey(k)); return v==null?fallback:v; }catch{ return fallback; } };
+export const setIconOverride = (k, v)=>{ try{ if(v==null||String(v).trim()==='') localStorage.removeItem(iconKey(k)); else localStorage.setItem(iconKey(k), v); }catch{} };
 // 应用工作台名称到品牌 / 浏览器标题 / 移动端标题
 export function applyAppName(){
   const name = getNameOverride('app', 'AI工作台');

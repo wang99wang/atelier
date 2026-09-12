@@ -31,6 +31,35 @@
   --radius-xs:12px;
   --sidebar-w:270px;
 }
+/* ===== 深色模式 ===== */
+[data-theme="dark"]{
+  --bg:#1B161C;
+  --bg-soft:#241D25;
+  --card:#2A232C;
+  --card-2:#332A38;
+  --ink:#F2E9EE;
+  --ink-soft:#C6B7BF;
+  --ink-faint:#8E808A;
+  --primary:#FF9EB5;
+  --primary-soft:#3A2A33;
+  --primary-deep:#FF8AA6;
+  --blue:#9AD0EC;
+  --blue-soft:#22323B;
+  --green:#A8D8B9;
+  --green-soft:#22332A;
+  --red:#FF7B7B;
+  --red-soft:#3A2528;
+  --purple:#C5B3E6;
+  --purple-soft:#2E2740;
+  --yellow:#FFD98A;
+  --yellow-soft:#3A3320;
+  --orange:#FFB98A;
+  --orange-soft:#3A2C22;
+  --line:#3A3038;
+  --line-strong:#4A3E47;
+  --shadow:0 8px 24px rgba(0,0,0,.42);
+  --shadow-sm:0 4px 12px rgba(0,0,0,.36);
+}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;padding:0;height:100%}
 body{
@@ -358,6 +387,12 @@ textarea.input{min-height:90px}
 /* 部分标题 */
 .sec-title{display:flex;align-items:center;gap:8px;font-weight:800;font-size:16px;margin:6px 0 14px}
 .sec-title .st-ico{font-size:22px}
+.sec-title .fold-btn{margin-left:auto;width:26px;height:26px;flex:0 0 26px;border-radius:9px;background:var(--card-2);color:var(--ink-soft);font-size:14px;line-height:1;display:inline-flex;align-items:center;justify-content:center;transition:.15s;cursor:pointer}
+.sec-title .fold-btn:hover{background:var(--primary-soft);color:var(--primary-deep)}
+.sec-title .rename-btn{margin-left:2px;width:24px;height:24px;flex:0 0 24px;border-radius:8px;background:transparent;color:var(--ink-faint);font-size:13px;opacity:0;transition:.15s;cursor:pointer}
+@media (hover:none){ .sec-title .rename-btn{opacity:.5} }
+.sec-title:hover .rename-btn{opacity:.85}
+.sec-title .rename-btn:hover{opacity:1;background:var(--card-2)}
 
 /* ===== 响应式：竖屏折叠，横屏常驻 ===== */
 @media (max-width:820px){
@@ -583,3 +618,24 @@ textarea.input{min-height:90px}
 .kt-node.kt-hit{border-color:var(--primary)!important;box-shadow:0 0 0 3px var(--primary-soft,#d8e6ff),var(--shadow)!important}
 .kt-sec.kt-delon .kt-canvas{cursor:pointer}
 @media (max-width:720px){ .kt-body{flex-direction:column} .kt-left{flex-direction:row;flex-wrap:wrap;min-width:0;border-right:none;border-bottom:1px solid var(--line)} }
+
+/* ===== 我的首页（聚合仪表盘）===== */
+.mine-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(108px,1fr));gap:12px;margin:14px 0}
+.mine-stat{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:16px 8px;border-radius:var(--radius-sm);background:var(--card);box-shadow:var(--shadow-sm)}
+.mine-stat .ms-num{font-size:30px;font-weight:800;color:var(--primary-deep);line-height:1}
+.mine-stat .ms-label{font-size:13px;color:var(--ink-soft)}
+.mine-quick{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:12px;margin:8px 0 4px}
+.mine-qbtn{display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 8px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--card);cursor:pointer;transition:.15s;color:var(--ink)}
+.mine-qbtn:hover{background:var(--card-2);border-color:var(--primary-soft);transform:translateY(-2px)}
+.mine-qbtn .mq-ico{font-size:26px}
+.mine-qbtn .mq-label{font-size:13px;color:var(--ink-soft)}
+
+/* ===== 图标自定义按钮 ===== */
+.icon-edit-btn{margin-left:2px;width:24px;height:24px;flex:0 0 24px;border-radius:8px;background:transparent;color:var(--ink-faint);font-size:13px;opacity:0;transition:.15s;cursor:pointer}
+@media (hover:none){ .icon-edit-btn{opacity:.5} }
+.menu-item:hover .icon-edit-btn{opacity:.85}
+.icon-edit-btn:hover{opacity:1;background:var(--card-2)}
+.icon-picker{display:grid;grid-template-columns:repeat(8,1fr);gap:6px;margin-top:6px}
+.icon-picker button{font-size:20px;padding:6px 0;border:1px solid var(--line);border-radius:10px;background:var(--card);cursor:pointer}
+.icon-picker button:hover{background:var(--card-2);border-color:var(--primary-soft)}
+.icon-picker button.on{border-color:var(--primary);background:var(--primary-soft)}

@@ -101,13 +101,6 @@ function recordFollow(text, refresh){
 
 // 话术库（输入情境/一句话 → 生成多个合适回复）
 async function eqView(root,back){ root.innerHTML=''; root.appendChild(backBtn(back)); root.appendChild(secTitle('💬','高情商话术库','左：输入情境生成回复 · 右：生成结果 + 人情世故话术 + 日常话术'));
-  // ===== 最上方：日常话术库（单独一行 · 独立版块置顶）=====
-  const phraseCard=el('div',{class:'card',style:'margin-bottom:14px'});
-  phraseCard.appendChild(secTitle('💭','日常话术库','常用话术一键复制 · 也能自己添加'));
-  const phraseBody=el('div',{});
-  phraseCard.appendChild(phraseBody);
-  root.appendChild(phraseCard);
-  try{ phraseBody.appendChild(await phrasesPanel()); }catch(e){ phraseBody.appendChild(el('div',{class:'muted',text:'话术库加载失败：'+((e&&e.message)||e)})); }
   const cols=el('div',{class:'eq-cols'});
   const leftCol=el('div',{class:'eq-left'});
   const rightCol=el('div',{class:'eq-col'});

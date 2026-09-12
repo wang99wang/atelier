@@ -1,11 +1,11 @@
 // ===== 主应用：初始化 / 路由 / 菜单 / 设置 =====
-import { $, $$, el, toast, modal, drawer, fmtDate, relTime, download, escapeHtml, debounce, getNameOverride, setNameOverride, applyAppName, renameBtn } from './core/utils.js';
+import { $, $$, el, toast, modal, drawer, fmtDate, relTime, download, escapeHtml, debounce, getNameOverride, setNameOverride, getIconOverride, setIconOverride, applyAppName, renameBtn } from './core/utils.js';
 import { openDB, globalSearch, trashList, restore, hardDelete, allRecords, recordsByModule, kvGet, kvSet, storageInfo } from './core/db.js';
 import { initSync, syncNow } from './core/sync.js';
 import { initReminders, getReminders, saveReminders, requestPermission } from './core/notifications.js';
 import { getWeather } from './core/data-services.js';
 import { getAIConfig, saveAIConfig, testAI, hasAI } from './core/ai.js';
-import { aiStatusBanner, skeleton, emptyState, enhanceTitles } from './core/lib.js';
+import { aiStatusBanner, skeleton, emptyState, enhanceTitles, secTitle } from './core/lib.js';
 import * as daily from './modules/daily.js';
 import * as tools from './modules/tools.js';
 import * as life from './modules/life.js';
@@ -42,6 +42,7 @@ MODULES.forEach((m)=>{
   menuData.push({ key:m.meta.key, name:m.meta.name, icon:m.meta.icon, parent: MENU_PARENT[m.meta.key]||null });
 });
 DIRECT_SUBS.forEach(d=>menuData.push(Object.assign({},d)));
+menuData.push({ key:'mine', name:'我的', icon:'🏠', parent:null });
 
 // ===== 侧边栏自定义入口（可收藏常用网页 / 内部功能）=====
 const CUSTOM_ENTRIES_KEY = 'atelier_custom_entries_v1';
@@ -141,7 +142,8 @@ function buildPinZone(){
 
 function renderMenuItem(m, level, activeKey, parentKey){
   const name = getNameOverride(m.key, m.name);
-  const kids = [ el('div',{class:'mi-ico',html:m.icon}), el('div',{class:'mi-label',text:name}) ];
+  const icon = getIconOverride(m.key, m.icon);
+  const kids = [ el('div',{class:'mi-ico',html:icon}), el('div',{class:'mi-label',text:name}) ];
   if (m.custom){
     kids.push(el('button',{class:'pin-del',title:'删除这个入口',onclick:(e)=>{
       e.stopPropagation();
@@ -151,6 +153,12 @@ function renderMenuItem(m, level, activeKey, parentKey){
     }},'✕'));
   } else {
     kids.push(renameBtn(m.key, name, ()=>{ buildMenu(); renderRoute(); }, '菜单名称'));
+    if(!READONLY){
+      kids.push(el('button',{class:'icon-edit-btn',title:'改图标',html:'🎨',onclick:(e)=>{
+        e.stopPropagation();
+        openIconPicker(m.key, icon, (nv)=>{ setIconOverride(m.key, nv); buildMenu(); });
+      }}));
+    }
   }
   const item = el('div',{
     class:'menu-item'+(level?' menu-sub':'')+(m.key===activeKey?' active':''),
@@ -159,6 +167,18 @@ function renderMenuItem(m, level, activeKey, parentKey){
   }, kids);
   if(!READONLY) attachDrag(item, m);
   return item;
+}
+
+// ===== 图标选择器（用于自定义菜单 / 入口图标）=====
+const ICON_PRESETS = ['📝','📅','💰','💡','🤝','🎨','📌','⭐','🔥','🌟','💎','🚀','📚','🎯','🍎','🏃','💪','🧘','🎵','📷','🌈','☕','🍵','🐱','🌸','❤️','✨','🔔','📦','🗂️','🧩','🛠️','📊','🗒️','🔖','🏷️','🌐','📱','💻','🎮'];
+function openIconPicker(key, cur, onPick){
+  const wrap = el('div',{});
+  const grid = el('div',{class:'icon-picker'});
+  ICON_PRESETS.forEach(ic=>{
+    grid.appendChild(el('button',{class: ic===cur?'on':'', html:ic, onclick:()=>{ onPick(ic); modal.close(); toast('图标已更新','ok'); }}));
+  });
+  wrap.appendChild(grid);
+  modal.open('🎨 选择图标', wrap);
 }
 
 function openAddEntry(){
@@ -196,12 +216,12 @@ function buildMenu() {
     menu.appendChild(renderMenuItem(p, 0, activeKey));
     menuData.filter(c=>c.parent===p.key).forEach(c=> menu.appendChild(renderMenuItem(c, 1, activeKey, p.key)));
   });
-  // 回收站 / 设置 入口（不参与拖拽排序，始终置底；只读模式隐藏）
+  // 添加入口（在回收站上方）
   if(!READONLY){
+    menu.appendChild(el('div',{class:'menu-add',onclick:openAddEntry},'➕ 添加入口 / 收藏网页'));
     menu.appendChild(el('div',{class:'menu-item',onclick:openTrash},[el('div',{class:'mi-ico',html:'🗑'}),el('div',{class:'mi-label',text:'回收站'})]));
     menu.appendChild(el('div',{class:'menu-item',onclick:openDataManage},[el('div',{class:'mi-ico',html:'📦'}),el('div',{class:'mi-label',text:'数据管理'})]));
     menu.appendChild(el('div',{class:'menu-item',onclick:openSettings},[el('div',{class:'mi-ico',html:'⚙️'}),el('div',{class:'mi-label',text:'设置'})]));
-    menu.appendChild(el('div',{class:'menu-add',onclick:openAddEntry},'➕ 添加入口 / 收藏网页'));
   }
   // 恢复默认顺序
   if(!READONLY) menu.appendChild(el('div',{class:'menu-reset',onclick:()=>{ localStorage.removeItem(MENU_ORDER_KEY); buildMenu(); renderRoute(); toast('已恢复默认菜单顺序','ok'); }},'↺ 恢复默认顺序'));
@@ -222,16 +242,20 @@ function endRouteProgress(){ const p=$('#routeProgress'); if(p){ p.style.width='
 async function renderRoute(){
   const hash = location.hash.replace(/^#\//,'') || '';
   const [mkey, sub] = hash.split('/');
+  const isMine = mkey === 'mine';
   const mod = MODULES.find(m=>m.meta.key===mkey) || MODULES[0];
   const ds = DIRECT_SUBS.find(d=>d.mod===mod.meta.key && d.sub===sub);
-  setActive(ds ? ds.key : mod.meta.key);
+  setActive(isMine ? 'mine' : (ds ? ds.key : mod.meta.key));
   const root = content(); root.innerHTML='';
   // 骨架屏覆盖层：挂到 .main，避免被视图内部 root.innerHTML='' 误删
   const overlay = skeleton(); overlay.classList.add('sk-overlay');
   document.querySelector('.main')?.appendChild(overlay);
   startRouteProgress();
   try {
-    if (sub && mod.subs && mod.subs[sub]) {
+    if (isMine) {
+      $('#pageTitle').textContent = '我的工作台';
+      await mineView(root);
+    } else if (sub && mod.subs && mod.subs[sub]) {
       $('#pageTitle').textContent = ds ? getNameOverride(ds.key, ds.name) : mod.meta.name;
       await mod.subs[sub](root, ()=>navigate(mod.meta.key));
     } else {
@@ -253,6 +277,52 @@ async function renderRoute(){
   enhanceTitles(root);
   setTimeout(()=>enhanceTitles(root), 300);
   setTimeout(()=>enhanceTitles(root), 1200);
+}
+
+// ===== 我的首页（聚合仪表盘）=====
+async function mineView(root){
+  root.appendChild(secTitle('🏠','我的工作台','数据一览 · 常用入口 · 最近动态'));
+  const all = await allRecords();
+  const byMod = {};
+  all.forEach(r=>{ const k=r.module||'other'; (byMod[k]=byMod[k]||[]).push(r); });
+  const NAMES = { daily:'日常规划', tools:'快捷工具', life:'生活锻炼', finance:'资产记账', growth:'技能审美', creator:'自媒体创作', aiedit:'AI剪辑工坊', eq:'话术', phrases:'话术', outfit:'穿搭', work:'作品', account:'账号', material:'素材', memo:'备忘', mood:'心情' };
+  const grid = el('div',{class:'mine-grid'});
+  const keys = Object.keys(byMod).sort();
+  if(!keys.length){ grid.appendChild(el('div',{class:'muted',text:'还没有数据，去各模块添加点内容吧～'})); }
+  keys.forEach(k=>{
+    grid.appendChild(el('div',{class:'mine-stat'},[
+      el('div',{class:'ms-num',text:String(byMod[k].length)}),
+      el('div',{class:'ms-label',text:NAMES[k]||k})
+    ]));
+  });
+  root.appendChild(grid);
+
+  root.appendChild(secTitle('⚡','快速入口','点击直达'));
+  const quick = [
+    {icon:'📝',label:'写笔记',mod:'daily',sub:'memo'},
+    {icon:'💰',label:'记一笔',mod:'finance',sub:'ledger'},
+    {icon:'💡',label:'灵感',mod:'tools',sub:'idea'},
+    {icon:'🤝',label:'高情商话术',mod:'growth',sub:'eq'},
+    {icon:'🎨',label:'创作中心',mod:'creator',sub:'work'}
+  ];
+  const qg = el('div',{class:'mine-quick'});
+  quick.forEach(q=>qg.appendChild(el('button',{class:'mine-qbtn',onclick:()=>{ location.hash='#/'+q.mod+'/'+(q.sub||''); }},[
+    el('div',{class:'mq-ico',html:q.icon}), el('div',{class:'mq-label',text:q.label})
+  ])));
+  root.appendChild(qg);
+
+  root.appendChild(secTitle('🕑','最近更新','最近添加 / 修改的内容'));
+  const recent = all.slice().sort((a,b)=>(b.updated||0)-(a.updated||0)).slice(0,8);
+  const list = el('div',{class:'list'});
+  if(!recent.length){ list.appendChild(el('div',{class:'muted',text:'暂无记录'})); }
+  recent.forEach(r=>{
+    const title = r.title || (r.text? r.text.slice(0,28) : (r.body? r.body.slice(0,28) : '(无标题)'));
+    list.appendChild(el('div',{class:'item'},[
+      el('div',{class:'it-ico',html:moduleIcon(r.module)}),
+      el('div',{class:'it-body'},[el('div',{class:'it-title',text:title}),el('div',{class:'it-meta',text:(NAMES[r.module]||r.module)+' · '+relTime(r.updated)})])
+    ]));
+  });
+  root.appendChild(list);
 }
 
 // ===== 顶部：天气 / 通知 / 搜索 =====
@@ -520,12 +590,32 @@ document.addEventListener('keydown',(e)=>{
   }
 });
 
+// ===== 主题（深色 / 浅色）=====
+function applyTheme(t){
+  document.documentElement.dataset.theme = t;
+  const b = document.getElementById('themeToggle');
+  if (b) b.textContent = t==='dark' ? '☀️' : '🌙';
+  try { localStorage.setItem('atelier_theme', t); } catch(_){}
+}
+function toggleTheme(){
+  const cur = document.documentElement.dataset.theme==='dark' ? 'light' : 'dark';
+  applyTheme(cur);
+}
+function initTheme(){
+  let t; try { t = localStorage.getItem('atelier_theme'); } catch(_){}
+  if (!t) { try { t = (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light'; } catch(_){ t='light'; } }
+  applyTheme(t);
+  const btn = document.getElementById('themeToggle');
+  if (btn && !btn._themed) { btn._themed = true; btn.addEventListener('click', toggleTheme); }
+}
+
 // ===== 启动 =====
 (async()=>{
   await openDB();
   applyMenuOrder();
   buildMenu();
   applyAppName();
+  initTheme();
   initSync();
   initReminders();
   refreshWeather();

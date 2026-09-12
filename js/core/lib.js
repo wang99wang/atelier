@@ -256,15 +256,32 @@ function openTileAdd(moduleKey, subs, renderGrid, renderChips){
 export function backBtn(onBack, label='‹ 返回功能') {
   return el('button',{class:'btn btn-ghost btn-sm',style:'margin-bottom:14px',onclick:onBack},label);
 }
-export function secTitle(icon,text,extra) {
-  const key = 'sec::'+(text||'');
+export function secTitle(icon,text,extra,opts) {
+  opts = opts || {};
+  const key = opts.key || 'sec::'+(text||'');
   const shown = text ? getNameOverride(key, text) : '';
   const span = el('span',{text:shown});
-  const node = el('div',{class:'sec-title'},[el('span',{class:'st-ico',html:icon}), span, extra||'']);
+  const foldBtn = el('button',{class:'fold-btn',type:'button',title:'折叠 / 展开',html:'▾'});
+  const node = el('div',{class:'sec-title'},[el('span',{class:'st-ico',html:icon}), span, extra||'', foldBtn]);
   const isRO = (typeof document!=='undefined' && document.documentElement && document.documentElement.classList.contains('readonly'));
+  const fk = 'fold::'+key;
+  let collapsed = false; try { collapsed = localStorage.getItem(fk)==='1'; } catch(e){}
+  const applyFold = () => {
+    const p = node.parentElement; if(!p) return;
+    const kids = Array.from(p.children); const idx = kids.indexOf(node);
+    const body = [];
+    for (let i=idx+1;i<kids.length;i++){ if(kids[i].classList && kids[i].classList.contains('sec-title')) break; body.push(kids[i]); }
+    body.forEach(n=>{ n.style.display = collapsed ? 'none' : ''; });
+    foldBtn.textContent = collapsed ? '▸' : '▾';
+    node.classList.toggle('collapsed', collapsed);
+  };
+  if (!isRO && !opts.noFold) {
+    foldBtn.onclick = (e)=>{ e.stopPropagation(); collapsed=!collapsed; try{localStorage.setItem(fk,collapsed?'1':'0');}catch(_){}; applyFold(); };
+  } else { foldBtn.style.display='none'; }
   if (text && !isRO) {
     node.appendChild(renameBtn(key, shown, (v)=>{ span.textContent = (v && String(v).trim()) ? v : text; }, '标题名称'));
   }
+  queueMicrotask(applyFold);
   return node;
 }
 // 给容器内「还没有改名按钮」的 .sec-title 补上改名能力（覆盖手动 el('div',{class:'sec-title'}...) 构造的标题）

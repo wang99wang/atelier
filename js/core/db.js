@@ -34,7 +34,7 @@ export const openDB = () => new Promise((resolve, reject) => {
   req.onerror = () => reject(req.error);
 });
 
-const tx = async (store, mode, fn) => {
+export const tx = async (store, mode, fn) => {
   const db = await openDB();
   return new Promise((resolve, reject) => {
     const t = db.transaction(store, mode);
@@ -130,3 +130,35 @@ export const storageInfo = async () => {
   let bytes = files.reduce((a,f)=>a+(f.blob?f.blob.size:0),0);
   return { records: all.length, files: files.length, bytes };
 };
+
+// ===== 全量备份 / 恢复（含文件 Blob 与 localStorage 覆盖）=====
+function _abToB64(ab){ let bin=''; const bytes=new Uint8Array(ab); const chunk=0x8000; for(let i=0;i<bytes.length;i+=chunk){ bin+=String.fromCharCode.apply(null, bytes.subarray(i,i+chunk)); } return btoa(bin); }
+function _b64ToBlob(b64,type){ const bin=atob(b64); const bytes=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) bytes[i]=bin.charCodeAt(i); return new Blob([bytes],{type:type||'application/octet-stream'}); }
+
+export async function backupAll(){
+  const recs = await allRecords();
+  const filesRaw = await tx('files','readonly', s=>s.getAll());
+  const files = await Promise.all(filesRaw.map(async f=>{
+    const { blob, ...rest } = f;
+    let _b64 = null;
+    if (blob && blob.arrayBuffer){ try { _b64 = _abToB64(await blob.arrayBuffer()); } catch(_){} }
+    return { ...rest, _b64 };
+  }));
+  const kv = await tx('kv','readonly', s=>s.getAll());
+  const snapshots = await tx('snapshots','readonly', s=>s.getAll());
+  const outbox = await tx('outbox','readonly', s=>s.getAll());
+  const local = {};
+  for (let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(k) local[k]=localStorage.getItem(k); }
+  return { _app:'atelier-backup', _ver:1, _exportedAt:Date.now(), records:recs, files, kv, snapshots, outbox, local };
+}
+
+export async function restoreAll(data){
+  for (const st of ['records','files','kv','snapshots','outbox']) await tx(st,'readwrite', s=>s.clear());
+  if (Array.isArray(data.records)) await tx('records','readwrite', s=>{ for (const r of data.records) s.put(r); });
+  if (Array.isArray(data.files)) await tx('files','readwrite', s=>{ for (const f of data.files){ const { _b64, ...rest } = f; const blob = _b64 ? _b64ToBlob(_b64, rest.type) : null; s.put(blob ? { ...rest, blob } : rest); } });
+  if (Array.isArray(data.kv)) await tx('kv','readwrite', s=>{ for (const k of data.kv) s.put(k); });
+  if (Array.isArray(data.snapshots)) await tx('snapshots','readwrite', s=>{ for (const s2 of data.snapshots) s.put(s2); });
+  if (Array.isArray(data.outbox)) await tx('outbox','readwrite', s=>{ for (const o of data.outbox) s.put(o); });
+  try { localStorage.clear(); } catch(_){}
+  if (data.local && typeof data.local==='object'){ for (const [k,v] of Object.entries(data.local)){ try{ localStorage.setItem(k,v); }catch(_){} } }
+}

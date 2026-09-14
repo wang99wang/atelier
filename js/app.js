@@ -1,6 +1,6 @@
 // ===== 主应用：初始化 / 路由 / 菜单 / 设置 =====
 import { $, $$, el, toast, modal, drawer, fmtDate, relTime, download, escapeHtml, debounce, getNameOverride, setNameOverride, getIconOverride, setIconOverride, applyAppName, renameBtn } from './core/utils.js';
-import { openDB, globalSearch, trashList, restore, hardDelete, allRecords, recordsByModule, kvGet, kvSet, storageInfo } from './core/db.js';
+import { openDB, globalSearch, trashList, restore, hardDelete, allRecords, recordsByModule, kvGet, kvSet, storageInfo, backupAll, restoreAll } from './core/db.js';
 import { initSync, syncNow } from './core/sync.js';
 import { initReminders, getReminders, saveReminders, requestPermission } from './core/notifications.js';
 import { getWeather } from './core/data-services.js';
@@ -378,7 +378,7 @@ async function openTrash(){ if(READONLY){ toast('只读分享模式，不可修�
 async function openDataManage(){
   if(READONLY){ toast('只读分享模式，不可修改','err'); return; }
   const body = el('div',{});
-  body.appendChild(el('div',{class:'muted',style:'font-size:12px;margin-bottom:12px'},'把当前设备的数据导出成 JSON 备份；换设备或清缓存后，用「导入 JSON」恢复。注意：工作台名、菜单与标题改名不随此备份迁移，需重新设置。'));
+  body.appendChild(el('div',{class:'muted',style:'font-size:12px;margin-bottom:12px'},'把当前设备的数据导出成一份完整 JSON 备份（含记录、图片/视频文件、各类设置、工作台改名、图标与自定义等全部本地数据）。换设备或清缓存后，用「导入 JSON」整体恢复。建议定期备份，避免数据丢失。'));
   body.appendChild(el('div',{class:'row wrap',style:'gap:8px;margin-bottom:12px'},[
     el('button',{class:'btn btn-soft btn-sm',onclick:exportAll},'⬇ 全量导出 JSON'),
     el('button',{class:'btn btn-soft btn-sm',onclick:importAll},'⬆ 导入 JSON')
@@ -500,8 +500,8 @@ async function saveField(id,val){
   await map[id](val); toast('已保存','ok');
 }
 function tip(t){ return el('div',{class:'muted',style:'font-size:13px;margin-bottom:8px',text:t}); }
-async function exportAll(){ const recs=await allRecords(); download(new Blob([JSON.stringify(recs,null,2)],{type:'application/json'}),'工作台全量备份_'+fmtDate(Date.now())+'.json'); toast('已导出','ok'); }
-async function importAll(){ const i=el('input',{type:'file',accept:'.json'}); i.onchange=async()=>{ const txt=await i.files[0].text(); try{ const arr=JSON.parse(txt); for(const r of arr){ await import('./core/db.js').then(d=>d.putRecord(r)); } toast('导入 '+arr.length+' 条','ok'); }catch(e){ toast('导入失败','err'); } }; i.click(); }
+async function exportAll(){ const data=await backupAll(); download(new Blob([JSON.stringify(data)],{type:'application/json'}),'工作台全量备份_'+fmtDate(Date.now())+'.json'); toast('已导出全量备份（含图片/视频/设置/改名）','ok'); }
+async function importAll(){ const i=el('input',{type:'file',accept:'.json'}); i.onchange=async()=>{ const txt=await i.files[0].text(); let data; try{ data=JSON.parse(txt); }catch(e){ toast('文件不是合法 JSON','err'); return; } if(data._app!=='atelier-backup'){ toast('不是本工作台备份文件','err'); return; } if(!confirm('导入将覆盖当前全部数据（记录 / 图片视频 / 设置 / 改名 / 自定义等），此操作不可撤销，确定继续？')) return; try{ await restoreAll(data); toast('导入完成，正在刷新…','ok'); setTimeout(()=>location.reload(),600); }catch(e){ toast('导入失败：'+((e&&e.message)||e),'err'); } }; i.click(); }
 async function updateStorage(){ const s=await storageInfo(); const mb=(s.bytes/1048576).toFixed(2); $('#storageInfo').textContent=`记录 ${s.records} 条 · 文件 ${s.files} 个 · 约 ${mb}MB（IndexedDB）`; }
 
 // ===== 安装 PWA =====

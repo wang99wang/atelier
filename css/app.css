@@ -631,6 +631,15 @@ textarea.input{min-height:90px}
 .mine-qbtn:hover{background:var(--card-2);border-color:var(--primary-soft);transform:translateY(-2px)}
 .mine-qbtn .mq-ico{font-size:26px}
 .mine-qbtn .mq-label{font-size:13px;color:var(--ink-soft)}
+.mine-hero{background:linear-gradient(135deg,var(--primary) 0%,var(--primary-deep) 100%);color:#fff;border-radius:14px;padding:20px 22px;margin:6px 0 16px;box-shadow:var(--shadow)}
+.mine-hero .mh-top{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:6px}
+.mine-hero .mh-greet{font-size:22px;font-weight:800}
+.mine-hero .mh-date{font-size:14px;opacity:.92}
+.mine-hero .mh-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:16px}
+.mine-hero .mh-stat{background:rgba(255,255,255,.16);border-radius:var(--radius-sm);padding:12px;text-align:center}
+.mine-hero .mhs-num{font-size:24px;font-weight:800;line-height:1}
+.mine-hero .mhs-label{font-size:12px;opacity:.92;margin-top:4px}
+@media (max-width:480px){ .mine-hero .mh-greet{font-size:19px} }
 
 /* ===== 图标自定义按钮 ===== */
 .icon-edit-btn{margin-left:2px;width:24px;height:24px;flex:0 0 24px;border-radius:8px;background:transparent;color:var(--ink-faint);font-size:13px;opacity:0;transition:.15s;cursor:pointer}

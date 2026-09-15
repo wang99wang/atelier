@@ -290,11 +290,35 @@ async function mineView(root){
   const byMod = {};
   all.forEach(r=>{ const k=r.module||'other'; (byMod[k]=byMod[k]||[]).push(r); });
   const NAMES = { daily:'日常规划', tools:'快捷工具', life:'生活锻炼', finance:'资产记账', growth:'技能审美', creator:'自媒体创作', aiedit:'AI剪辑工坊', eq:'话术', phrases:'话术', outfit:'穿搭', work:'作品', account:'账号', material:'素材', memo:'备忘', mood:'心情' };
+
+  // 问候横幅 + 今日 / 本周 / 全部概览
+  const nd = new Date();
+  const hh = nd.getHours();
+  const greet = hh<6?'夜深了':hh<11?'早上好':hh<14?'中午好':hh<18?'下午好':hh<23?'晚上好':'夜深了';
+  const wk = ['日','一','二','三','四','五','六'][nd.getDay()];
+  const todayKey = fmtDate(nd.getTime());
+  const weekStart = new Date(nd); weekStart.setDate(nd.getDate()-nd.getDay()); weekStart.setHours(0,0,0,0);
+  const weekKey = fmtDate(weekStart.getTime());
+  const todayCount = all.filter(r=>fmtDate(r.updated)===todayKey).length;
+  const weekCount  = all.filter(r=>fmtDate(r.updated)>=weekKey).length;
+  const hero = el('div',{class:'mine-hero'},[
+    el('div',{class:'mh-top'},[
+      el('div',{class:'mh-greet',text:greet+' 👋'}),
+      el('div',{class:'mh-date',text:`${nd.getMonth()+1}月${nd.getDate()}日 · 周${wk}`})
+    ]),
+    el('div',{class:'mh-stats'},[
+      el('div',{class:'mh-stat'},[el('div',{class:'mhs-num',text:String(todayCount)}),el('div',{class:'mhs-label',text:'今日新增'})]),
+      el('div',{class:'mh-stat'},[el('div',{class:'mhs-num',text:String(weekCount)}),el('div',{class:'mhs-label',text:'本周新增'})]),
+      el('div',{class:'mh-stat'},[el('div',{class:'mhs-num',text:String(all.length)}),el('div',{class:'mhs-label',text:'全部记录'})])
+    ])
+  ]);
+  root.appendChild(hero);
+
   const grid = el('div',{class:'mine-grid'});
   const keys = Object.keys(byMod).sort();
   if(!keys.length){ grid.appendChild(el('div',{class:'muted',text:'还没有数据，去各模块添加点内容吧～'})); }
   keys.forEach(k=>{
-    grid.appendChild(el('div',{class:'mine-stat'},[
+    grid.appendChild(el('div',{class:'mine-stat',style:'cursor:pointer',onclick:()=>{ location.hash='#/'+k; }},[
       el('div',{class:'ms-num',text:String(byMod[k].length)}),
       el('div',{class:'ms-label',text:NAMES[k]||k})
     ]));
@@ -315,13 +339,13 @@ async function mineView(root){
   ])));
   root.appendChild(qg);
 
-  root.appendChild(secTitle('🕑','最近更新','最近添加 / 修改的内容'));
+  root.appendChild(secTitle('🕑','最近更新','最近添加 / 修改的内容 · 点击查看'));
   const recent = all.slice().sort((a,b)=>(b.updated||0)-(a.updated||0)).slice(0,8);
   const list = el('div',{class:'list'});
   if(!recent.length){ list.appendChild(el('div',{class:'muted',text:'暂无记录'})); }
   recent.forEach(r=>{
     const title = r.title || (r.text? r.text.slice(0,28) : (r.body? r.body.slice(0,28) : '(无标题)'));
-    list.appendChild(el('div',{class:'item'},[
+    list.appendChild(el('div',{class:'item',style:'cursor:pointer',onclick:()=>{ location.hash='#/'+(r.module||'daily'); }},[
       el('div',{class:'it-ico',html:moduleIcon(r.module)}),
       el('div',{class:'it-body'},[el('div',{class:'it-title',text:title}),el('div',{class:'it-meta',text:(NAMES[r.module]||r.module)+' · '+relTime(r.updated)})])
     ]));

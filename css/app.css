@@ -218,6 +218,8 @@ textarea.input{min-height:90px}
 .list{display:flex;flex-direction:column;gap:10px}
 .item{background:var(--card);border-radius:var(--radius-sm);padding:14px 16px;box-shadow:var(--shadow-sm);border:1px solid var(--line);display:flex;gap:12px;align-items:flex-start;transition:.18s}
 .item:hover{box-shadow:var(--shadow)}
+.item.active{background:var(--card-2);box-shadow:var(--shadow);border-color:var(--line)}
+.cmd-hint{font-size:12px;color:var(--ink-soft);margin-top:8px;text-align:right}
 .item .it-ico{width:44px;height:44px;flex:0 0 44px;border-radius:14px;display:grid;place-items:center;font-size:22px;background:var(--card-2)}
 .item .it-thumb{width:52px;height:52px;flex:0 0 52px;border-radius:12px;object-fit:cover;background:var(--card-2)}
 .item .it-body{flex:1;min-width:0}

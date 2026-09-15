@@ -6,15 +6,18 @@ import { initReminders, getReminders, saveReminders, requestPermission } from '.
 import { getWeather } from './core/data-services.js';
 import { getAIConfig, saveAIConfig, testAI, hasAI } from './core/ai.js';
 import { aiStatusBanner, skeleton, emptyState, enhanceTitles, secTitle } from './core/lib.js';
-import * as daily from './modules/daily.js';
-import * as tools from './modules/tools.js';
-import * as life from './modules/life.js';
-import * as finance from './modules/finance.js';
-import * as growth from './modules/growth.js';
-import * as creator from './modules/creator.js';
-import * as aiedit from './modules/ai-edit.js';
+// 模块改为按需动态加载（代码分割，减小首屏体积）——见下方 MODULE_REGISTRY
 
-const MODULES = [daily, tools, life, finance, growth, creator, aiedit];
+// 模块注册表：meta 内联供菜单/图标使用，load() 按需动态加载整模块（首屏不阻塞）
+const MODULE_REGISTRY = {
+  daily:   { name:'日常规划', icon:'🌞', load:()=>import('./modules/daily.js') },
+  tools:   { name:'快捷工具', icon:'⚡', load:()=>import('./modules/tools.js') },
+  life:    { name:'生活锻炼', icon:'🌿', load:()=>import('./modules/life.js') },
+  finance: { name:'资产记账', icon:'💰', load:()=>import('./modules/finance.js') },
+  growth:  { name:'技能审美', icon:'🎨', load:()=>import('./modules/growth.js') },
+  creator: { name:'自媒体创作', icon:'🚀', load:()=>import('./modules/creator.js') },
+  aiedit:  { name:'AI剪辑工坊', icon:'🎬', load:()=>import('./modules/ai-edit.js') },
+};
 
 // ===== 分享 / 只读模式（用于「分享给别人用，不能动」）=====
 // 触发：URL 带 ?share=1，或分享版部署时 index.html 注入 window.ATELIER_READONLY=true
@@ -38,8 +41,8 @@ const DIRECT_SUBS = [
 const MENU_PARENT = { life:'growth', finance:'tools' };
 
 let menuData = []; // 用 let：buildMenu 会把自定义入口并入并过滤
-MODULES.forEach((m)=>{
-  menuData.push({ key:m.meta.key, name:m.meta.name, icon:m.meta.icon, parent: MENU_PARENT[m.meta.key]||null });
+Object.keys(MODULE_REGISTRY).forEach((key)=>{
+  menuData.push({ key, name:MODULE_REGISTRY[key].name, icon:MODULE_REGISTRY[key].icon, parent: MENU_PARENT[key]||null });
 });
 DIRECT_SUBS.forEach(d=>menuData.push(Object.assign({},d)));
 menuData.push({ key:'mine', name:'我的', icon:'🏠', parent:null });
@@ -243,7 +246,8 @@ async function renderRoute(){
   const hash = location.hash.replace(/^#\//,'') || '';
   const [mkey, sub] = hash.split('/');
   const isMine = mkey === 'mine';
-  const mod = MODULES.find(m=>m.meta.key===mkey) || MODULES[0];
+  const reg = MODULE_REGISTRY[mkey] || MODULE_REGISTRY.daily;
+  const mod = await reg.load();
   const ds = DIRECT_SUBS.find(d=>d.mod===mod.meta.key && d.sub===sub);
   setActive(isMine ? 'mine' : (ds ? ds.key : mod.meta.key));
   const root = content(); root.innerHTML='';
@@ -350,7 +354,57 @@ function openSearch(){
   modal.open('🔎 全局搜索', body); input.focus();
 }
 function debounceInput(fn){ return debounce(fn, 250); }
-function moduleIcon(m){ const f=MODULES.find(x=>x.meta.key===m); return f?f.meta.icon:'📌'; }
+function moduleIcon(m){ const r=MODULE_REGISTRY[m]; return r?r.icon:'📌'; }
+
+// ===== 命令面板（Ctrl/⌘+K）=====
+function openCommandPalette(){
+  const body = el('div',{});
+  const input = el('input',{class:'input',placeholder:'输入命令或功能名，回车执行…',autocomplete:'off'});
+  const hint = el('div',{class:'cmd-hint'},'↑↓ 选择 · ⏎ 执行 · Esc 关闭');
+  const list = el('div',{class:'list',style:'margin-top:10px'});
+  const CMDS = buildCommands();
+  let active = -1;
+  function paint(){ [...list.children].forEach((r,i)=>r.classList.toggle('active', i===active)); }
+  function render(q){
+    const kw = (q||'').trim().toLowerCase();
+    const items = !kw ? CMDS : CMDS.filter(c => c.name.toLowerCase().includes(kw) || (c.kw||'').toLowerCase().includes(kw));
+    list.innerHTML=''; list._items = items; active = items.length ? 0 : -1;
+    if(!items.length){ list.appendChild(el('div',{class:'muted',style:'padding:14px;text-align:center'},'没有匹配的命令')); return; }
+    items.forEach((c,i)=>{
+      list.appendChild(el('div',{class:'item'+(i===active?' active':''),onclick:()=>exec(c),onmousemove:()=>{active=i;paint();}},[
+        el('div',{class:'it-ico',text:c.icon||'⚡'}),
+        el('div',{class:'it-body'},[el('div',{class:'it-title',text:c.name}), c.sub?el('div',{class:'it-meta',text:c.sub}):null].filter(Boolean))
+      ]));
+    });
+    paint();
+  }
+  function move(d){ const n=list._items?.length||0; if(!n)return; active=(active+d+n)%n; render(input.value); }
+  function exec(c){ modal.close(); if(c.go){ location.hash=c.go; } else if(c.run){ c.run(); } }
+  input.oninput = ()=>{ active=0; render(input.value); };
+  input.onkeydown = (e)=>{
+    if(e.key==='ArrowDown'){e.preventDefault();move(1);}
+    else if(e.key==='ArrowUp'){e.preventDefault();move(-1);}
+    else if(e.key==='Enter'){e.preventDefault();const it=list._items?.[active];if(it)exec(it);}
+    else if(e.key==='Escape'){e.preventDefault();modal.close();}
+  };
+  body.append(input, hint, list);
+  modal.open('⌨️ 命令面板', body); input.focus(); render('');
+}
+function buildCommands(){
+  const cmds = [];
+  menuData.forEach(m=>{
+    if(m.custom) return;
+    const go = m.mod ? `#/${m.mod}`+(m.sub?`/${m.sub}`:'') : (m.key==='mine'?'#/mine':'#/'+m.key);
+    cmds.push({ icon:m.icon, name:m.name, sub:'前往功能', go, kw:(m.name+' '+(m.key||'')+' '+(m.mod||'')).toLowerCase() });
+  });
+  cmds.push({icon:'🌙',name:'切换深色 / 浅色模式', sub:'外观', run:toggleTheme, kw:'theme dark light 深色 浅色 主题'});
+  cmds.push({icon:'⚙️',name:'打开设置', sub:'系统', run:openSettings, kw:'settings 设置 配置 偏好'});
+  cmds.push({icon:'📊',name:'打开数据管理（备份 / 恢复）', sub:'系统', run:openDataManage, kw:'backup 备份 恢复 数据 导出 导入'});
+  cmds.push({icon:'🤖',name:'打开 AI 助手', sub:'系统', run:openAiPanel, kw:'ai 助手 智能 大模型'});
+  cmds.push({icon:'🏠',name:'前往「我的」首页', sub:'导航', run:()=>{location.hash='#/mine';}, kw:'mine 我的 首页 仪表盘'});
+  cmds.push({icon:'🔎',name:'全局内容搜索', sub:'导航', run:openSearch, kw:'search 搜索 查找'});
+  return cmds;
+}
 
 // ===== 回收站 =====
 async function openTrash(){ if(READONLY){ toast('只读分享模式，不可修改','err'); return; }
@@ -517,6 +571,7 @@ $('#globalSearch')?.addEventListener('focus', openSearch);
 $('#globalSearch')?.addEventListener('click', openSearch);
 $('#notifBadge')?.addEventListener('click', async()=>{ await requestPermission(); toast('提醒已开启','ok'); });
 $('#settingsBtn')?.addEventListener('click', openSettings);
+$('#commandBtn')?.addEventListener('click', openCommandPalette);
 $('#aiBtn')?.addEventListener('click', openAiPanel);
 $('#brandRename')?.addEventListener('click', ()=>{
   const input = el('input',{class:'input',value:getNameOverride('app','AI工作台')});
@@ -579,6 +634,7 @@ document.addEventListener('error',(e)=>{
 
 // ===== 快捷键：/ 唤起全局搜索，Esc 关闭弹窗/抽屉 =====
 document.addEventListener('keydown',(e)=>{
+  if ((e.ctrlKey||e.metaKey) && (e.key==='k'||e.key==='K')){ e.preventDefault(); openCommandPalette(); return; }
   if (e.key === 'Escape'){
     if ($('#modal').style.display === 'flex') modal.close();
     if ($('#drawer').style.display === 'flex') drawer.close();
